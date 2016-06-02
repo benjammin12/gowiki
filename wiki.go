@@ -5,15 +5,18 @@
 package main
 
 import (
-	"fmt"
+	"html/template"
 	"io/ioutil"
 	"net/http"
 )
 
 type Page struct { //a wiki page has two data types
 	Title string //the title
-	Body  []byte //the body consisting of the page information
-	//body is a byte type cause that is what the io libraries will use
+	Body  []byte /*
+		//the body consisting of the page information
+		//body is a byte type cause that is what the io libraries will use
+
+	*/
 }
 
 func (p *Page) save() error { //this method saves the page title to a txt file
@@ -32,11 +35,41 @@ func loadPage(title string) (*Page, error) {
 
 func viewHandler(w http.ResponseWriter, r *http.Request) {
 	title := r.URL.Path[len("/view/"):] //drops the leading "view" compenet
-	p, _ := loadPage(title)             //then call loadPage function
-	fmt.Fprintf(w, "<h1>%s</h1><div>%s</div>", p.Title, p.Body)
+	p, err := loadPage(title)
+
+	if err != nil {
+		http.Redirect(w, r, "/edit"+title, http.StatusFound)
+		return
+	}
+
+	renderTemplate(w, "view", p)
+}
+
+func editHandler(w http.ResponseWriter, r *http.Request) {
+	title := r.URL.Path[len("/edit/"):]
+	p, err := loadPage(title)
+	if err != nil {
+		p = &Page{Title: title}
+	}
+	renderTemplate(w, "edit", p)
+}
+
+func saveHandler(w http.ResponseWriter, r *http.Request) {
+	title := r.URL.Path[len("/save/"):]
+	body := r.FormValue("body")
+	p := &Page{Title: title, Body: []byte(body)}
+	p.save()
+	http.Redirect(w, r, "/view/"+title, http.StatusFound)
+}
+
+func renderTemplate(w http.ResponseWriter, tmpl string, p *Page) {
+	t, _ := template.ParseFiles(tmpl + ".html")
+	t.Execute(w, p)
 }
 
 func main() {
 	http.HandleFunc("/view/", viewHandler)
+	http.HandleFunc("/edit/", editHandler)
+	http.HandleFunc("/save/", saveHandler)
 	http.ListenAndServe(":8080", nil)
 }
