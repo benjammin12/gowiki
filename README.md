@@ -1,2 +1,2 @@
 #gowiki
-#Adding to README
+#Added error handling
