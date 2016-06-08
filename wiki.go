@@ -8,6 +8,7 @@ import (
 	"html/template"
 	"io/ioutil"
 	"net/http"
+	"regexp"
 )
 
 type Page struct { //a wiki page has two data types
@@ -18,6 +19,10 @@ type Page struct { //a wiki page has two data types
 
 	*/
 }
+
+var templates = template.Must(template.ParseFiles("edit.html", "view.html"))
+
+var valiidPath = regexp.MustCompile("^/(edit|save|view)/([a-zA-Z0-9]+)$")
 
 func (p *Page) save() error { //this method saves the page title to a txt file
 	filename := p.Title + ".txt"
@@ -67,15 +72,10 @@ func saveHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func renderTemplate(w http.ResponseWriter, tmpl string, p *Page) {
-	t, err := template.ParseFiles(tmpl + ".html")
+	err := templates.ExecuteTemplate(w, tmpl+".html", p)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	err = t.Execute(w, p)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		//The http.Error function sends a specified HTTP response code (in this case "Internal Server Error") and error message.
+
 	}
 }
 
